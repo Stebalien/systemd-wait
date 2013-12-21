@@ -86,7 +86,7 @@ if __name__ == '__main__':
     parser.add_argument("-q", "--quiet", help="Don't print resulting state", action="store_true")
     parser.add_argument("--user", help="Connect to user service manager", action="store_true")
     parser.add_argument("unit", help="Unit for which to wait")
-    parser.add_argument("state", help="States for which to wait", choices=UNIT_STATES, nargs='*')
+    parser.add_argument("state", help="States for which to wait", choices=UNIT_STATES, nargs='+')
 
     args = parser.parse_args()
     bus = dbus.SessionBus() if args.user else dbus.SystemBus()

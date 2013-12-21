@@ -3,11 +3,11 @@ A simple tool to wait for a systemd unit to enter a specific state.
 # Usage
 
 ```
-usage: systemd-wait [-h] [-q] [--user] unit [STATE ...]
+usage: systemd-wait [-h] [-q] [--user] unit STATE [STATE ...]
 
 positional arguments:
   unit                  Unit for which to wait
-  STATE ...             States for which to wait. Any combination of {
+  STATE [STATE ...]     States for which to wait. Any combination of {
                           active,
                           reloading,
                           inactive,
