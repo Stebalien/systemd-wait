@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+# encoding: utf-8
+
+from gi.repository import GLib
+import dbus, re
+from dbus.mainloop.glib import DBusGMainLoop
+from binascii import hexlify
+
+UNIT_INTERFACE = 'org.freedesktop.systemd1.Unit' 
+UNIT_STATES = [
+    "active",
+    "reloading",
+    "inactive",
+    "failed",
+    "activating",
+    "deactivating",
+]
+
+unit_regex = re.compile('[^A-Za-z0-9]')
+
+DBusGMainLoop(set_as_default=True)
+
+event_loop = GLib.MainLoop()
+
+def wait(bus, unit, target_states):
+    state = None
+
+    path = "/org/freedesktop/systemd1/unit/" + unit_regex.sub(
+        lambda x: "_" + hexlify(bytes(x.group(0), 'utf-8')).decode('utf-8'),
+        unit
+    )
+
+    unit_int = dbus.Interface(
+        bus.get_object('org.freedesktop.systemd1',
+                       path),
+        dbus_interface=dbus.PROPERTIES_IFACE
+    )
+
+    def get_active_state():
+        return unit_int.Get(UNIT_INTERFACE, "ActiveState")
+
+    def handler(interface, changed, invalidated):
+        nonlocal state
+        if interface == UNIT_INTERFACE \
+           and "ActiveState" in invalidated:
+            state = get_active_state()
+            if state in target_states:
+                event_loop.quit()
+
+    unit_int.connect_to_signal('PropertiesChanged', handler) 
+
+    manager_int = dbus.Interface(
+        bus.get_object('org.freedesktop.systemd1', '/org/freedesktop/systemd1'),
+        dbus_interface="org.freedesktop.systemd1.Manager"
+    )
+
+    manager_int.Subscribe()
+
+    state = get_active_state()
+    if state not in target_states:
+        event_loop.run()
+
+    manager_int.Unsubscribe()
+
+    return state
+
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("-q", "--quiet", help="Don't print resulting state", action="store_true")
+    parser.add_argument("--user", help="Connect to user service manager", action="store_true")
+    parser.add_argument("unit", help="Unit for which to wait")
+    parser.add_argument("state", help="States for which to wait", choices=UNIT_STATES, nargs='*')
+
+    args = parser.parse_args()
+    bus = dbus.SessionBus() if args.user else dbus.SystemBus()
+    state = wait(bus, args.unit, args.state)
+    if not args.quiet:
+        print(state)
