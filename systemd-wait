@@ -56,9 +56,11 @@ def wait(bus, unit, target_states):
 
     def handler(interface, changed, invalidated):
         nonlocal state
-        if interface == UNIT_INTERFACE \
-           and "ActiveState" in invalidated:
-            state = get_active_state()
+        if interface == UNIT_INTERFACE:
+            if "ActiveState" in invalidated:
+                state = get_active_state()
+            elif "ActiveState" in changed:
+                state = changed['ActiveState']
             if state in target_states:
                 event_loop.quit()
 
