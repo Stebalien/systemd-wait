@@ -42,7 +42,6 @@ EVENT_LOOP = GLib.MainLoop()
 
 
 def wait(bus, unit, target_states):
-    state = None
 
     path = "/org/freedesktop/systemd1/unit/" + UNIT_REGEX.sub(
         lambda x: "_" + binascii.hexlify(bytes(x.group(0))).decode('utf-8'),
@@ -56,10 +55,11 @@ def wait(bus, unit, target_states):
     )
 
     def get_active_state():
+        """Get the current state of the unit."""
         return unit_int.Get(UNIT_INTERFACE, "ActiveState")
 
     def handler(interface, changed, invalidated):
-        """nonlocal state"""
+        """Handle PropertiesChanged events."""
         if interface == UNIT_INTERFACE:
             if "ActiveState" in invalidated:
                 state = get_active_state()
@@ -78,13 +78,12 @@ def wait(bus, unit, target_states):
 
     manager_int.Subscribe()
 
-    state = get_active_state()
-    if state not in target_states:
+    if get_active_state() not in target_states:
         EVENT_LOOP.run()
 
     manager_int.Unsubscribe()
 
-    return state
+    return get_active_state()
 
 
 def main():
