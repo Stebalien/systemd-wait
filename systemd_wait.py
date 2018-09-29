@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # encoding: utf-8
 
 # A simple tool to wait for a systemd unit to enter a specific state.
@@ -44,7 +44,7 @@ EVENT_LOOP = GLib.MainLoop()
 def wait(bus, unit, target_states):
 
     path = "/org/freedesktop/systemd1/unit/" + UNIT_REGEX.sub(
-        lambda x: "_" + binascii.hexlify(bytes(x.group(0))).decode('utf-8'),
+        lambda x: "_" + binascii.hexlify(bytes(x.group(0), 'utf-8')).decode('utf-8'),
         unit
     )
 
