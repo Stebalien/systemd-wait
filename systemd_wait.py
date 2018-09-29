@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2.7
 # encoding: utf-8
 
 # A simple tool to wait for a systemd unit to enter a specific state.
@@ -7,7 +7,7 @@
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 3 as published by the
 # Free Software Foundation.
-# 
+#
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
@@ -16,12 +16,15 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib
-import dbus, re
-from dbus.mainloop.glib import DBusGMainLoop
-from binascii import hexlify
+import argparse
+import binascii
+import re
 
-UNIT_INTERFACE = 'org.freedesktop.systemd1.Unit' 
+import dbus
+from dbus.mainloop.glib import DBusGMainLoop
+from gi.repository import GLib
+
+UNIT_INTERFACE = 'org.freedesktop.systemd1.Unit'
 UNIT_STATES = [
     "active",
     "reloading",
@@ -31,17 +34,18 @@ UNIT_STATES = [
     "deactivating",
 ]
 
-unit_regex = re.compile('[^A-Za-z0-9]')
+UNIT_REGEX = re.compile('[^A-Za-z0-9]')
 
 DBusGMainLoop(set_as_default=True)
 
-event_loop = GLib.MainLoop()
+EVENT_LOOP = GLib.MainLoop()
+
 
 def wait(bus, unit, target_states):
     state = None
 
-    path = "/org/freedesktop/systemd1/unit/" + unit_regex.sub(
-        lambda x: "_" + hexlify(bytes(x.group(0), 'utf-8')).decode('utf-8'),
+    path = "/org/freedesktop/systemd1/unit/" + UNIT_REGEX.sub(
+        lambda x: "_" + binascii.hexlify(bytes(x.group(0))).decode('utf-8'),
         unit
     )
 
@@ -55,19 +59,20 @@ def wait(bus, unit, target_states):
         return unit_int.Get(UNIT_INTERFACE, "ActiveState")
 
     def handler(interface, changed, invalidated):
-        nonlocal state
+        """nonlocal state"""
         if interface == UNIT_INTERFACE:
             if "ActiveState" in invalidated:
                 state = get_active_state()
             elif "ActiveState" in changed:
                 state = changed['ActiveState']
             if state in target_states:
-                event_loop.quit()
+                EVENT_LOOP.quit()
 
-    unit_int.connect_to_signal('PropertiesChanged', handler) 
+    unit_int.connect_to_signal('PropertiesChanged', handler)
 
     manager_int = dbus.Interface(
-        bus.get_object('org.freedesktop.systemd1', '/org/freedesktop/systemd1'),
+        bus.get_object('org.freedesktop.systemd1',
+                       '/org/freedesktop/systemd1'),
         dbus_interface="org.freedesktop.systemd1.Manager"
     )
 
@@ -75,23 +80,29 @@ def wait(bus, unit, target_states):
 
     state = get_active_state()
     if state not in target_states:
-        event_loop.run()
+        EVENT_LOOP.run()
 
     manager_int.Unsubscribe()
 
     return state
 
 
-if __name__ == '__main__':
-    from argparse import ArgumentParser
-    parser = ArgumentParser()
-    parser.add_argument("-q", "--quiet", help="Don't print resulting state", action="store_true")
-    parser.add_argument("--user", help="Connect to user service manager", action="store_true")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-q", "--quiet", help="Don't print resulting state",
+                        action="store_true")
+    parser.add_argument("--user", help="Connect to user service manager",
+                        action="store_true")
     parser.add_argument("unit", help="Unit for which to wait")
-    parser.add_argument("state", help="States for which to wait", choices=UNIT_STATES, nargs='+')
+    parser.add_argument("state", help="States for which to wait",
+                        choices=UNIT_STATES, nargs='+')
 
     args = parser.parse_args()
     bus = dbus.SessionBus() if args.user else dbus.SystemBus()
     state = wait(bus, args.unit, args.state)
     if not args.quiet:
         print(state)
+
+
+if __name__ == '__main__':
+    main()
