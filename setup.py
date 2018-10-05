@@ -24,4 +24,10 @@ setuptools.setup(
     author="Steven Allen",
     author_email="steven@stebalien.com",
     url="https://github.com/Stebalien/systemd-wait",
+    classifiers=[
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3 :: Only"
+    ],
+    python_requires=">=3",
 )
